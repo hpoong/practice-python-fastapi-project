@@ -1,7 +1,9 @@
 from fastapi import FastAPI
-from core.security import GlobalAuthMiddleware
-from routers import user_router, admin_router
+# from core.security import GlobalAuthMiddleware
+# from routers import user_router, admin_router
 from fastapi.middleware.cors import CORSMiddleware
+
+from security.security_config import GlobalAuthMiddleware
 
 app = FastAPI()
 
@@ -16,5 +18,5 @@ app.add_middleware(
 )
 
 # Routers
-app.include_router(user_router.router)
-app.include_router(admin_router.router)
+# app.include_router(user_router.router)
+# app.include_router(admin_router.router)

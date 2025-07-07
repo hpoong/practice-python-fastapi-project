@@ -1,7 +1,7 @@
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from core.exceptions import unauthorized_response
+# from core.exceptions import unauthorized_response
 
 class GlobalAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
