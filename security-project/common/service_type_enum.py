@@ -5,6 +5,5 @@ class ServiceTypeEnum(Enum):
     USER = "user"
     POINT = "point"
     ORDER = "order"
-    # 필요시 추가
 
  

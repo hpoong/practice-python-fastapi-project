@@ -3,7 +3,8 @@ from fastapi import FastAPI
 # from routers import user_router, admin_router
 from fastapi.middleware.cors import CORSMiddleware
 
-from common.exception_handler import add_exception_handlers
+from exception.business_exception import BusinessException
+from exception.exception_handler import add_exception_handlers
 from common.service_type_enum import ServiceTypeEnum
 from response.common_response import CommonResponse
 from response.success_response import SuccessResponse
@@ -44,7 +45,7 @@ def success_example():
 
 @app.get("/error")
 def error_example():
-    raise HTTPException(status_code=400, detail="일부러 발생시킨 에러입니다.")
+    raise BusinessException(message="일부러 발생시킨 에러입니다.", service_type_enum=ServiceTypeEnum.USER)
 
 
 # Routers
