@@ -1,7 +1,7 @@
-from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import Request
-from fastapi.responses import JSONResponse
-# from core.exceptions import unauthorized_response
+from starlette.middleware.base import BaseHTTPMiddleware
+from security.auth_entry_point import unauthorized_response
+
 
 class GlobalAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -9,5 +9,5 @@ class GlobalAuthMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         token = request.headers.get("Authorization")
         if not token:
-            return unauthorized_response("Token empty.")
+            return unauthorized_response()
         return await call_next(request)

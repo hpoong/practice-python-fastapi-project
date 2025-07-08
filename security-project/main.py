@@ -2,21 +2,19 @@ from fastapi import FastAPI
 # from core.security import GlobalAuthMiddleware
 # from routers import user_router, admin_router
 from fastapi.middleware.cors import CORSMiddleware
-
+from common.service_type_enum import ServiceTypeEnum
 from exception.business_exception import BusinessException
 from exception.exception_handler import add_exception_handlers
-from common.service_type_enum import ServiceTypeEnum
 from response.common_response import CommonResponse
 from response.success_response import SuccessResponse
-from fastapi import HTTPException
-# from security.security_config import GlobalAuthMiddleware
+from security.security_config import GlobalAuthMiddleware
 
 app = FastAPI()
 
 
 add_exception_handlers(app)
 
-# app.add_middleware(GlobalAuthMiddleware)
+app.add_middleware(GlobalAuthMiddleware)
 
 # CORS
 app.add_middleware(
@@ -26,13 +24,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@app.get("/")
+@app.get("/login")
 def printHello():
     return CommonResponse(
         success=True,
         serviceType=ServiceTypeEnum.USER,
-        message="User Service Test",
+        message="login test",
     )
 
 @app.get("/success")
@@ -45,7 +42,10 @@ def success_example():
 
 @app.get("/error")
 def error_example():
-    raise BusinessException(message="일부러 발생시킨 에러입니다.", service_type_enum=ServiceTypeEnum.USER)
+    raise BusinessException(
+        message="일부러 발생시킨 에러입니다.",
+        service_type_enum=ServiceTypeEnum.USER
+    )
 
 
 # Routers

@@ -1,8 +1,9 @@
-from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
 
-def unauthorized_response(detail: str = "Token empty."):
-    content = {"code": "SECURITY_LOGIN", "message": detail}
-    return JSONResponse(status_code=480, content=content)
+from common.service_type_enum import ServiceTypeEnum
+from response.error_response import ErrorResponse
 
 
+def unauthorized_response():
+    content = ErrorResponse.with_message(service_type=ServiceTypeEnum.SECURITY_LOGIN, message="Token empty.")
+    return JSONResponse(status_code=480, content=content.dict())
