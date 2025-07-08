@@ -1,15 +1,15 @@
 from pydantic import BaseModel, Field
-
+from common.service_type_enum import ServiceTypeEnum
 from utils.time_util import TimeUtil
+from enum import Enum  # Enum을 import 해줍니다.
 
 
 class CommonResponse(BaseModel):
     success: bool
-    type: str
-    code: str
+    serviceType: ServiceTypeEnum
     message: str
-    timestamp: str = Field(default_factory=TimeUtil.get_unix_timestamp_ms())
-    serviceName: str = "security-project-service"
+    timestamp: str = Field(default_factory=TimeUtil.get_unix_timestamp_ms)
+    serviceName: str = "security-service"
 
-    def __init__(self, **data):
-        super().__init__(**data)
+    class Config:
+        use_enum_values = True
