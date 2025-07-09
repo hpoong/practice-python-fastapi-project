@@ -1,11 +1,9 @@
-from response.common_response import CommonResponse
-from pydantic import Field
 from typing import Any, Optional
 from common.service_type_enum import ServiceTypeEnum
+from response.common_response import CommonResponse
 
 class SuccessResponse(CommonResponse):
     data: Optional[Any] = None
-    code: Optional[str] = None
 
     @classmethod
     def with_data(cls, service_type: ServiceTypeEnum, message: str, data: Any = None):

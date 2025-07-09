@@ -1,6 +1,4 @@
-from fastapi import FastAPI
-# from core.security import GlobalAuthMiddleware
-# from routers import user_router, admin_router
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from common.service_type_enum import ServiceTypeEnum
 from exception.business_exception import BusinessException
@@ -28,14 +26,14 @@ app.add_middleware(
 def printHello():
     return CommonResponse(
         success=True,
-        serviceType=ServiceTypeEnum.USER,
+        serviceType=ServiceTypeEnum.SERVER,
         message="login test",
     )
 
 @app.get("/success")
 def success_example():
     return SuccessResponse.with_data(
-        service_type=ServiceTypeEnum.USER,
+        service_type=ServiceTypeEnum.SERVER,
         message="성공적으로 처리되었습니다.",
         data={"example": "데이터 예시"}
     )
@@ -44,10 +42,15 @@ def success_example():
 def error_example():
     raise BusinessException(
         message="일부러 발생시킨 에러입니다.",
-        service_type_enum=ServiceTypeEnum.USER
+        service_type=ServiceTypeEnum.SERVER
     )
 
+@app.get("/profile")
+async def read_profile(request: Request):
+    if not hasattr(request.state, "user"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
-# Routers
-# app.include_router(user_router.router)
-# app.include_router(admin_router.router)
+    user = request.state.user
+    return {
+        "message": f"Hello {user['user_id']} with role {user['user_role']}"
+    }
