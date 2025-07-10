@@ -1,18 +1,27 @@
 from pinecone import Pinecone, ServerlessSpec
+import os
+from dotenv import load_dotenv
 
-pc = Pinecone(api_key="YOUR_API_KEY")
+load_dotenv()
 
-index_name = "YOUR_INDEX_NAME"
+api_key = os.getenv("PINECONE_API_KEY")
+index_name = os.getenv("PINECONE_INDEX_NAME")
+
+pc = Pinecone(api_key = api_key)
 
 all_indexes = pc.list_indexes()
 print("현재 사용 가능한 Index 목록:", all_indexes)
 
-if index_name in all_indexes:
-    print(f" '{index_name}' index가 존재합니다. 연결 성공!")
-else:
-    print(f" '{index_name}' index가 존재하지 않습니다. 새로 생성합니다...")
-
 index = pc.Index(index_name)
 print(f"Index 객체 준비 완료: {index_name}")
+
+
+try:
+    stats = index.describe_index_stats()
+    print(f"'{index_name}' index 연결 및 상태 확인 완료!")
+except Exception as e:
+    print(f"Index 연결 상태 확인 실패: {e}")
+
+
 
 __all__ = ["index"]
