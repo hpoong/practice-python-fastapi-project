@@ -6,6 +6,8 @@ from exception.exception_handler import add_exception_handlers
 from response.common_response import CommonResponse
 from response.success_response import SuccessResponse
 from security.security_config import GlobalAuthMiddleware
+from db.pinecone_client import index
+
 
 app = FastAPI()
 
