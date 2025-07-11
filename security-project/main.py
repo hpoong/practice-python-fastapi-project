@@ -3,6 +3,7 @@ import uuid
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from common.service_type_enum import ServiceTypeEnum
 from exception.business_exception import BusinessException
 from exception.exception_handler import add_exception_handlers
@@ -13,6 +14,7 @@ from db.pinecone_client import index
 from sentence_transformers import SentenceTransformer
 import numpy as np
 import re
+from utils.document_util import DocumentUtil
 
 app = FastAPI()
 
@@ -75,35 +77,34 @@ async def upsert(request: Request):
         message="vector_chunks.json 기반 벡터 upsert 완료!"
     )
 
-@app.post("/search")
-async def search(request: Request):
-    body = await request.json()
-    query_text = body.get("query")
-    top_k = int(body.get("top_k", 5))
-    if not query_text:
-        raise HTTPException(status_code=400, detail="query 파라미터가 필요합니다.")
+class ServerSearchRequest(BaseModel):
+    query: str
+    top_k: int = 5
 
-    # 1. 쿼리 임베딩 생성
+
+
+@app.post("search")
+async def search(request: ServerSearchRequest):
+    """SentenceTransformer로 임베딩 후 Pinecone에서 검색하는 엔드포인트"""
+
+    query_text = request.query
+    top_k = request.top_k
+
+    print(query_text)
+
     model = SentenceTransformer('jhgan/ko-sroberta-multitask')
     query_embedding = model.encode(query_text).tolist()
 
-    # 2. (필요시) filter map 읽기
-    try:
-        with open("metadata.txt", "r", encoding="utf-8") as f:
-            filter_map = json.load(f)
-    except Exception:
-        filter_map = None
+    # Pinecone에서 검색
+    result = index.query(
+        vector=query_embedding,
+        top_k=top_k,
+        include_metadata=True,
+        filter={
+            "category": {"$nin": ["news", "blog"]}
+        }
+    )
 
-    # 3. Pinecone에서 검색
-    search_kwargs = {
-        "vector": query_embedding,
-        "top_k": top_k,
-        "include_metadata": True
-    }
-    if filter_map:
-        search_kwargs["filter"] = filter_map
-
-    result = index.query(**search_kwargs)
     print(result)
 
     
@@ -144,3 +145,30 @@ async def embedding(request: Request):
         json.dump(vectors, f, ensure_ascii=False, indent=2)
 
     print("vector_chunks.json 파일 생성 완료! (청크 단위)")
+
+
+
+@app.get("/chunks")
+async def chunks(request: Request):
+    
+    example_text = """
+    <h1>API 인증 설명</h1>
+    This API allows you to authenticate users via OAuth2. It requires a client_id and client_secret.
+    If authentication fails, it returns a 401 status code. You must also provide a redirect_uri
+    when initiating the authentication flow. Users will be redirected to the given URL after
+    successful login. Make sure to securely store the client_secret. Revoke tokens if you suspect
+    any compromise. OAuth2 is a standard protocol for authorization and is widely used
+    in modern applications. Always follow security best practices when implementing OAuth2.
+    """
+
+    # 인스턴스 생성 (max_tokens 예: 50으로 설정)
+    preprocessor = DocumentUtil(max_tokens=50)
+
+    # 전처리 및 chunking
+    chunks = preprocessor.preprocess(example_text)
+
+    # 출력
+    for i, chunk in enumerate(chunks, 1):
+        print(f"--- Chunk {i} ---")
+        print(chunk)
+        print()
