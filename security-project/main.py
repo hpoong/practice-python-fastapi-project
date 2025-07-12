@@ -43,7 +43,6 @@ def printHello():
 def success_example():
     return SuccessResponse.with_data(
         service_type=ServiceTypeEnum.SERVER,
-        message="성공적으로 처리되었습니다.",
         data={"example": "데이터 예시"}
     )
 

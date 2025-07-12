@@ -8,7 +8,7 @@ class ErrorResponse(CommonResponse):
     data: Optional[Any] = None
 
     @classmethod
-    def with_data(cls, service_type: ServiceTypeEnum, message: str, data: Any = None):
+    def _build(cls, service_type: ServiceTypeEnum, message: str, data: Any = None):
         return cls(
             success=False,
             serviceType=service_type,
@@ -18,15 +18,15 @@ class ErrorResponse(CommonResponse):
 
     @classmethod
     def with_message(cls, service_type: ServiceTypeEnum, message: str):
-        return cls.with_data(
+        return cls._build(
             service_type=service_type,
             message=message,
             data=None
         )
 
     @classmethod
-    def error_with_data(cls, service_type: ServiceTypeEnum, data: Any):
-        return cls.with_data(
+    def with_data(cls, service_type: ServiceTypeEnum, data: Any):
+        return cls._build(
             service_type=service_type,
             message="Error",
             data=data

@@ -6,7 +6,7 @@ class SuccessResponse(CommonResponse):
     data: Optional[Any] = None
 
     @classmethod
-    def with_data(cls, service_type: ServiceTypeEnum, message: str, data: Any = None):
+    def _build(cls, service_type: ServiceTypeEnum, message: str, data: Any = None):
         return cls(
             success=True,
             serviceType=service_type,
@@ -16,15 +16,15 @@ class SuccessResponse(CommonResponse):
 
     @classmethod
     def with_message(cls, service_type: ServiceTypeEnum, message: str):
-        return cls.with_data(
+        return cls._build(
             service_type=service_type,
             message=message,
             data=None
         )
 
     @classmethod
-    def success_with_data(cls, service_type: ServiceTypeEnum, data: Any):
-        return cls.with_data(
+    def with_data(cls, service_type: ServiceTypeEnum, data: Any):
+        return cls._build(
             service_type=service_type,
             message="Success",
             data=data
