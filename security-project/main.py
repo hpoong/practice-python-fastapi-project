@@ -76,37 +76,6 @@ async def upsert(request: Request):
         message="vector_chunks.json 기반 벡터 upsert 완료!"
     )
 
-class ServerSearchRequest(BaseModel):
-    query: str
-    top_k: int = 5
-
-
-
-@app.post("search")
-async def search(request: ServerSearchRequest):
-    """SentenceTransformer로 임베딩 후 Pinecone에서 검색하는 엔드포인트"""
-
-    query_text = request.query
-    top_k = request.top_k
-
-    print(query_text)
-
-    model = SentenceTransformer('jhgan/ko-sroberta-multitask')
-    query_embedding = model.encode(query_text).tolist()
-
-    # Pinecone에서 검색
-    result = index.query(
-        vector=query_embedding,
-        top_k=top_k,
-        include_metadata=True,
-        filter={
-            "category": {"$nin": ["news", "blog"]}
-        }
-    )
-
-    print(result)
-
-    
 
 @app.get("/embedding")
 async def embedding(request: Request):
@@ -114,12 +83,12 @@ async def embedding(request: Request):
     document_text = """
     """
 
-    # 2. 문단 단위 청크 분리 (빈 줄 기준 or 문장 기준 분할 가능)
-    chunks = re.split(r'\n+', document_text.strip())
-    chunks = [chunk.strip() for chunk in chunks if chunk.strip()]
+    # 2. DocumentUtil을 사용한 청크 분리
+    preprocessor = DocumentUtil(max_tokens=50)  # 원하는 token 크기
+    chunks = preprocessor.preprocess(document_text)
 
     # 3. 모델 로드
-    model = SentenceTransformer('jhgan/ko-sroberta-multitask')  # 예시 한국어 모델
+    model = SentenceTransformer('jhgan/ko-sroberta-multitask')  # 한국어 예시
 
     # 4. 각 청크에 대해 임베딩 생성 및 JSON 데이터 준비
     vectors = []
@@ -127,7 +96,7 @@ async def embedding(request: Request):
 
     for i, chunk in enumerate(chunks):
         embedding = model.encode(chunk)
-        
+
         vector_data = {
             "id": f"{document_id}#chunk{i}",
             "values": embedding.tolist(),
@@ -136,38 +105,83 @@ async def embedding(request: Request):
                 "chunk_index": i
             }
         }
-        
+
         vectors.append(vector_data)
 
     # 5. JSON 파일로 저장
     with open("vector_chunks.json", "w", encoding="utf-8") as f:
         json.dump(vectors, f, ensure_ascii=False, indent=2)
 
-    print("vector_chunks.json 파일 생성 완료! (청크 단위)")
+    print("vector_chunks.json 파일 생성 완료! (DocumentUtil 기반 청크)")
+    return {"message": "vector_chunks.json 파일이 성공적으로 생성되었습니다."}
 
 
+# 요청 모델 정의
+class QuestionRequest(BaseModel):
+    question: str
 
-@app.get("/chunks")
-async def chunks(request: Request):
+@app.post("/ask")
+async def ask_question(req: QuestionRequest):
+
+    # [1] 질문 임베딩
+    model = SentenceTransformer('jhgan/ko-sroberta-multitask')  # 한국어 예시 모델
+    embedding = model.encode(req.question)
+    embedding_list = embedding.tolist()
+
+    # [2] Pinecone에서 검색
+    result = index.query(
+        vector=embedding_list,
+        top_k=5,
+        include_metadata=True,
+        filter={
+            "category": {"$nin": ["news", "blog"]}
+        }
+    )
+
+    # matches 리스트 가져오기
+    matches = result.get('matches', [])
+
+    # text만 리스트로 추출
+    texts = [match['metadata'].get('text', '') for match in matches]
+
+    # 만약 검색 결과가 부족하면 빈 문자열로 채움
+    if len(texts) < 2:
+        texts += [""] * (2 - len(texts))
+
+    # [3] 문서 내용을 하나의 문자열로 합치기
+    document_content = "\n".join(texts)
+
+    # [4] LLM 프롬프트 생성
+    prompt = f"""
+    너는 전문 뉴스 분석가야.
+    주어진 뉴스 문서를 분석하고 아래 질문에 객관적이고 정확하게 답변해줘.
+    또한, 문서의 핵심 내용을 이해하기 쉽게 요약하고 추가 분석도 포함시켜줘.
     
-    example_text = """
-    <h1>API 인증 설명</h1>
-    This API allows you to authenticate users via OAuth2. It requires a client_id and client_secret.
-    If authentication fails, it returns a 401 status code. You must also provide a redirect_uri
-    when initiating the authentication flow. Users will be redirected to the given URL after
-    successful login. Make sure to securely store the client_secret. Revoke tokens if you suspect
-    any compromise. OAuth2 is a standard protocol for authorization and is widely used
-    in modern applications. Always follow security best practices when implementing OAuth2.
+    다음 형식을 지켜줘:
+    
+    * 요약: 문서의 핵심 내용을 한 문단으로 요약.
+    * 배경 설명: 기사의 맥락과 배경 정보를 포함.
+    * 추가 분석: 전문가 시각에서의 분석 및 의미 해석.
+    * 향후 전망: 앞으로의 영향이나 가능성.
+    
+    문서 내용:
+    {document_content}
+    
+    질문: {req.question}
+    
+    출력은 한글로 작성하고, 정보 왜곡이나 과도한 추측은 피할 것.
+    모든 답변은 간결하면서도 핵심적인 내용을 담아야 하며, 불필요한 반복은 하지 마.
     """
 
-    # 인스턴스 생성 (max_tokens 예: 50으로 설정)
-    preprocessor = DocumentUtil(max_tokens=50)
+    # 디버깅용 출력
+    print(prompt)
 
-    # 전처리 및 chunking
-    chunks = preprocessor.preprocess(example_text)
 
-    # 출력
-    for i, chunk in enumerate(chunks, 1):
-        print(f"--- Chunk {i} ---")
-        print(chunk)
-        print()
+@app.get("/delete-all")
+async def delete_all_vectors():
+    namespace_name = ""
+    try:
+        index.delete(delete_all=True, namespace=namespace_name)
+        return {"message": f"Namespace '{namespace_name}'의 모든 vector가 삭제되었습니다."}
+    except Exception as e:
+        return {"error": str(e)}
