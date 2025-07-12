@@ -1,5 +1,7 @@
 import re
 import tiktoken
+import kss
+
 
 class DocumentUtil:
     """
@@ -15,7 +17,6 @@ class DocumentUtil:
         self.max_tokens = max_tokens
         self.tokenizer = tiktoken.get_encoding(encoding_name)
 
-
     def clean_text(self, text: str) -> str:
         """
         기본적인 전처리 함수.
@@ -29,9 +30,14 @@ class DocumentUtil:
     def split_into_sentences(self, text: str) -> list:
         """
         문장을 기준으로 분할.
-        영어 기준 기본 패턴, 한글 포함 시 추가 커스터마이즈 가능.
+        한글 포함 시 kss를 사용하고, 그렇지 않으면 기본 영어 분할 패턴 사용.
         """
-        sentences = re.split(r'(?<=[.!?])\s+', text)
+        # 한글이 포함되어 있으면 kss 사용
+        if re.search(r'[가-힣]', text):
+            sentences = kss.split_sentences(text)
+        else:
+            # 영어 기준 기본 패턴
+            sentences = re.split(r'(?<=[.!?])\s+', text)
         return sentences
 
     def chunk_sentences(self, sentences: list) -> list:
